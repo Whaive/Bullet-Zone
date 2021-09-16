@@ -1,0 +1,132 @@
+[gd_scene load_steps=14 format=2]
+
+[ext_resource path="res://Assets/RectanaAnimations.png" type="Texture" id=1]
+[ext_resource path="res://Characters/CharacterController.tscn" type="PackedScene" id=2]
+[ext_resource path="res://Characters/Enemy/Enemy.gd" type="Script" id=3]
+[ext_resource path="res://Guns/GunHandler.tscn" type="PackedScene" id=4]
+[ext_resource path="res://Characters/HealthManager.tscn" type="PackedScene" id=5]
+[ext_resource path="res://Bullets/EnemyBullet.tscn" type="PackedScene" id=6]
+[ext_resource path="res://SFX/enemyDamage.wav" type="AudioStream" id=7]
+
+[sub_resource type="Shader" id=1]
+resource_local_to_scene = true
+code = "shader_type canvas_item;
+
+uniform vec4 flash_color: hint_color = vec4(1.0);
+uniform float flash_modifier: hint_range(0.0, 1.0) = 1;
+
+void fragment() {
+	vec4 color = texture(TEXTURE, UV);
+	color.rgb = mix(color.rgb, flash_color.rgb, flash_modifier);
+	COLOR = color;
+}"
+
+[sub_resource type="ShaderMaterial" id=2]
+resource_local_to_scene = true
+shader = SubResource( 1 )
+shader_param/flash_color = Color( 0.960784, 0.929412, 0.729412, 1 )
+shader_param/flash_modifier = 0.0
+
+[sub_resource type="RectangleShape2D" id=3]
+extents = Vector2( 4, 8 )
+
+[sub_resource type="Animation" id=4]
+length = 0.8
+loop = true
+tracks/0/type = "value"
+tracks/0/path = NodePath("../Rectana/Sprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.4 ),
+"transitions": PoolRealArray( 1, 1 ),
+"update": 1,
+"values": [ 0, 1 ]
+}
+
+[sub_resource type="Animation" id=5]
+length = 0.4
+loop = true
+tracks/0/type = "value"
+tracks/0/path = NodePath("../Rectana/Sprite:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.2 ),
+"transitions": PoolRealArray( 1, 1 ),
+"update": 1,
+"values": [ 2, 3 ]
+}
+
+[sub_resource type="CircleShape2D" id=6]
+radius = 149.003
+
+[node name="Rectana" type="KinematicBody2D"]
+position = Vector2( 0, -8 )
+collision_layer = 4
+script = ExtResource( 3 )
+
+[node name="Sprite" type="Sprite" parent="."]
+material = SubResource( 2 )
+texture = ExtResource( 1 )
+hframes = 2
+vframes = 2
+frame = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource( 3 )
+
+[node name="CharacterController" parent="." instance=ExtResource( 2 )]
+moveSpeed = 0.0
+jumpHeight = 50.0
+timeToPeak = 0.5
+timeToFall = 0.6
+
+[node name="GunHandler" parent="." instance=ExtResource( 4 )]
+position = Vector2( 0, 2 )
+selectedGun = 2
+
+[node name="Pistol" parent="GunHandler" index="0"]
+bullet = ExtResource( 6 )
+fireRate = 0.6
+
+[node name="SubMachine" parent="GunHandler" index="1"]
+bullet = ExtResource( 6 )
+
+[node name="Sniper" parent="GunHandler" index="2"]
+bullet = ExtResource( 6 )
+fireRate = 1.8
+angleToShoot = 25
+
+[node name="HealthManager" parent="." instance=ExtResource( 5 )]
+hurtSound = ExtResource( 7 )
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+autoplay = "Idle"
+anims/Idle = SubResource( 4 )
+anims/Walk = SubResource( 5 )
+
+[node name="FlashTimer" type="Timer" parent="."]
+wait_time = 0.1
+one_shot = true
+
+[node name="DetectionZone" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionZone"]
+shape = SubResource( 6 )
+
+[node name="GroundCheck" type="RayCast2D" parent="."]
+scale = Vector2( 2, 1 )
+enabled = true
+
+[connection signal="timeout" from="FlashTimer" to="." method="EndFlash"]
+[connection signal="body_entered" from="DetectionZone" to="." method="Chase"]
+[connection signal="body_exited" from="DetectionZone" to="." method="StopChase"]
+
+[editable path="GunHandler"]
